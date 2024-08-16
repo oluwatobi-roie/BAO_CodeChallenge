@@ -3,7 +3,7 @@ This repository contains the Template and codes for deploying a serverless appli
 
 ## Architecture Overview
 1. API Gateway: Accepts incoming subscriber data via a POST request.
-2. LambdaFunction1: 'validateSubscribers': Validates the schema ofincoming subscribers data
+2. LambdaFunction1: 'validateSubscribers': Validates the schema of incoming subscribers data
     * Valid Data: sent to SQS queue
     * Invalid Data: stored in s3 bucket for further processing
 4. LambdaFunction2: ProcessValidSubscribers': Pool the SQS queue, checks for duplicate and insert new entries into DynamoDB
