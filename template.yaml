@@ -7,28 +7,13 @@ Resources:
   validateSubscribers:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: .
+      CodeUri: s3://your-bucket-name/validateSubscribers.zip
+      Description: This is the function that validates subscribers
       Handler: lambda_function.lambda_handler
       Runtime: python3.12
       MemorySize: 128
       Timeout: 3
-      Policies:
-        - Statement:
-            - Effect: Allow
-              Action:
-                - logs:CreateLogGroup
-                - logs:CreateLogStream
-                - logs:PutLogEvents
-              Resource: arn:aws:logs:us-east-1:237587954704:*
-            - Action:
-                - sqs:*
-              Effect: Allow
-              Resource: '*'
-            - Effect: Allow
-              Action:
-                - s3:*
-                - s3-object-lambda:*
-              Resource: '*'
+      Role: !GetAtt LambdaExecutionRole.Arn
       Events:
         Api1:
           Type: Api
@@ -40,36 +25,18 @@ Resources:
   processValidSubscribers:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: .
+      CodeUri: s3://your-bucket-name/processValidSubscribers.zip
+      Description: This is the function that processes valid subscribers
       Handler: lambda_function.lambda_handler
       Runtime: python3.12
       MemorySize: 128
       Timeout: 3
-      Policies:
-        - Statement:
-            - Effect: Allow
-              Action:
-                - sqs:ReceiveMessage
-                - sqs:DeleteMessage
-                - sqs:GetQueueAttributes
-              Resource:
-                - !GetAtt SQSQueue1.Arn
-            - Effect: Allow
-              Action:
-                - dynamodb:GetItem
-                - dynamodb:PutItem
-              Resource: arn:aws:dynamodb:us-east-1:237587954704:table/SubscribersDB
-            - Effect: Allow
-              Action:
-                - logs:CreateLogGroup
-                - logs:CreateLogStream
-                - logs:PutLogEvents
-              Resource: arn:aws:logs:us-east-1:237587954704:*
+      Role: !GetAtt LambdaExecutionRole.Arn
       Events:
         SQS1:
           Type: SQS
           Properties:
-            Queue: !GetAtt SQSQueue1.Arn
+            Queue: !GetAtt SQSQueue1.QueueUrl
             BatchSize: 10
 
   # SQS Queue
@@ -95,6 +62,46 @@ Resources:
         - AttributeName: Email
           KeyType: HASH
       BillingMode: PAY_PER_REQUEST
+
+  # IAM Role for Lambda Functions
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaPermissions
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "arn:aws:logs:*:*:*"
+              - Effect: Allow
+                Action:
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                Resource: !GetAtt SQSQueue1.Arn
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                Resource: !GetAtt SubscribersDB.Arn
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource: !Sub "arn:aws:s3:::${InvalidRecordsBucket}/*"
 
 Outputs:
   ApiUrl:
