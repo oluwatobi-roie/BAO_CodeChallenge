@@ -7,7 +7,7 @@ This repository contains the Template and codes for deploying a serverless appli
     * Valid Data: sent to SQS queue
     * Invalid Data: stored in s3 bucket for further processing
 4. LambdaFunction2: ProcessValidSubscribers': Pool the SQS queue, checks for duplicate and insert new entries into DynamoDB
-![arichtectural diagram.drawio](images/diagram.png)
+![arichtectural diagram](diagram.png.png)
 
 ## Prerequisites
 Ensure you have the following installed and configured:
