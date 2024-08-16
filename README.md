@@ -28,6 +28,7 @@ Ensure you have the following installed and configured:
 aws s3 cp template.yaml s3://InvalidSubscribers/
 ``` 
 > Replace the bucket name *(InvalidSubscribers)* with yours
+> in addition modify the code path ini template.yaml file to reflect the path to the zip file of the python code that can be gotten from this repository
 
 #### Step 2: Create the CloudFormation Stack
 1. **Deploy the stack using the AWS CLI:**
