@@ -1,0 +1,111 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Combined template for both validating and processing subscribers information
+
+Resources:
+  # Lambda Function for Schema Validation
+  validateSubscribers:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: lambda_function.lambda_handler
+      Runtime: python3.12
+      MemorySize: 128
+      Timeout: 3
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: arn:aws:logs:us-east-1:237587954704:*
+            - Action:
+                - sqs:*
+              Effect: Allow
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - s3:*
+                - s3-object-lambda:*
+              Resource: '*'
+      Events:
+        Api1:
+          Type: Api
+          Properties:
+            Path: /subscribe
+            Method: POST
+
+  # Lambda Function for Processing Valid Subscribers
+  processValidSubscribers:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: lambda_function.lambda_handler
+      Runtime: python3.12
+      MemorySize: 128
+      Timeout: 3
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - sqs:ReceiveMessage
+                - sqs:DeleteMessage
+                - sqs:GetQueueAttributes
+              Resource:
+                - !GetAtt SQSQueue1.Arn
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+              Resource: arn:aws:dynamodb:us-east-1:237587954704:table/SubscribersDB
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: arn:aws:logs:us-east-1:237587954704:*
+      Events:
+        SQS1:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt SQSQueue1.Arn
+            BatchSize: 10
+
+  # SQS Queue
+  SQSQueue1:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: SQSQueue1
+      SqsManagedSseEnabled: true
+
+  # S3 Bucket for Invalid Records
+  InvalidRecordsBucket:
+    Type: AWS::S3::Bucket
+
+  # DynamoDB Table for Subscribers
+  SubscribersDB:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: SubscribersDB
+      AttributeDefinitions:
+        - AttributeName: Email
+          AttributeType: S
+      KeySchema:
+        - AttributeName: Email
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
+Outputs:
+  ApiUrl:
+    Description: "API Gateway endpoint URL for subscriber validation"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/subscribe"
+  SQSQueueUrl:
+    Description: "URL of the SQS queue for valid records"
+    Value: !Ref SQSQueue1
+  S3BucketName:
+    Description: "Name of the S3 bucket for invalid records"
+    Value: !Ref InvalidRecordsBucket
+  DynamoDBTableName:
+    Description: "Name of the DynamoDB table for subscribers"
+    Value: !Ref SubscribersDB
